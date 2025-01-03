@@ -5,7 +5,7 @@ string lastUidFromMlExec = "";
 uint patchedAt = 0;
 
 void RenderEarly() {
-    return false;
+    return;
     if (UI::Begin("Server Map Reqs Debug")) {
 
         // UI::BeginDisabled(Time::Now - patchedAt < 5000);
@@ -14,27 +14,29 @@ void RenderEarly() {
         // }
         // UI::EndDisabled();
 
+        auto listUids = MLFeed::Get_MapListUids_Receiver();
+
         auto app = cast<CTrackMania>(GetApp());
         auto si = cast<CTrackManiaNetworkServerInfo>(app.Network.ServerInfo);
         UI::Text("ServerLogin: " + si.ServerLogin);
         // UI::Text("ChallengeIds.Length: " + si.ChallengeIds.Length);
         // UI::Text("ChallengeNames.Length: " + si.ChallengeNames.Length);
-        UI::Text("MapList_IsInProgress: " + H_ReceiveMapUids.MapList_IsInProgress);
+        UI::Text("MapList_IsInProgress: " + listUids.MapList_IsInProgress);
 
         if (UI::Button("Request Map List")) {
-            H_ReceiveMapUids.MapList_Request();
+            listUids.MapList_Request();
         }
 
-        UI::Text("MapList_MapUids.Length: " + H_ReceiveMapUids.MapList_MapUids.Length);
+        UI::Text("MapList_MapUids.Length: " + listUids.MapList_MapUids.Length);
         UI::Indent();
-        for (uint i = 0; i < H_ReceiveMapUids.MapList_MapUids.Length; i++) {
-            UI::Text(tostring(i + 1) + ": " + H_ReceiveMapUids.MapList_MapUids[i]);
+        for (uint i = 0; i < listUids.MapList_MapUids.Length; i++) {
+            UI::Text(tostring(i + 1) + ": " + listUids.MapList_MapUids[i]);
         }
         UI::Unindent();
-        UI::Text("MapList_Names.Length: " + H_ReceiveMapUids.MapList_Names.Length);
+        UI::Text("MapList_Names.Length: " + listUids.MapList_Names.Length);
         UI::Indent();
-        for (uint i = 0; i < H_ReceiveMapUids.MapList_Names.Length; i++) {
-            UI::Text(tostring(i + 1) + ": " + H_ReceiveMapUids.MapList_Names[i]);
+        for (uint i = 0; i < listUids.MapList_Names.Length; i++) {
+            UI::Text(tostring(i + 1) + ": " + listUids.MapList_Names[i]);
         }
         UI::Unindent();
 

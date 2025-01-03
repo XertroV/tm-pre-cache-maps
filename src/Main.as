@@ -4,8 +4,9 @@ const string PluginIcon = Icons::Cogs;
 const string MenuTitle = MenuIconColor + PluginIcon + "\\$z " + PluginName;
 
 void Main() {
-    startnew(AfterScripts_Coro).WithRunContext(Meta::RunContext::AfterScripts);
+#if DEV
     InterceptProcs();
+#endif
     auto app = cast<CTrackMania>(GetApp());
     while (true) {
         RunWhileNotInServer(app);
@@ -13,21 +14,6 @@ void Main() {
         yield();
     }
     error("Main loop exited. This should not happen.");
-}
-
-/** Called when the plugin is unloaded and completely removed from memory.
-*/
-void OnDestroyed() {
-    MLHook::UnregisterMLHooksAndRemoveInjectedML();
-}
-
-void AfterScripts_Coro() {
-    Init_MLHook();
-    // yield();
-    // while (true) {
-    //     H_ReceiveMapUids.ProcessMsgs();
-    //     yield();
-    // }
 }
 
 void RunWhileNotInServer(CTrackMania@ app) {
@@ -39,8 +25,6 @@ void RunWhileNotInServer(CTrackMania@ app) {
 
 
 void RunWhileInServer(CTrackMania@ app) {
-    yield(10);
-    sleep(2000);
     yield(10);
     while (app.RootMap is null) yield();
     if (app.Network.PlaygroundClientScriptAPI is null) return;
@@ -59,11 +43,8 @@ void RunWhileInServer(CTrackMania@ app) {
     dev_print("RunWhileInServer exiting: ServerLogin: " + si.ServerLogin);
 }
 
-void MaybeCheckForNewMaps(CTrackMania@ app) { // CTrackManiaNetwork@ net) {
-    // auto pgsApi = app.Network.PlaygroundClientScriptAPI;
-    // if (pgsApi is null) return;
-    // trace('checking MapList_IsInProgress');
-    if (H_ReceiveMapUids.MapList_IsInProgress) return;
+void MaybeCheckForNewMaps(CTrackMania@ app) {
+    if (MLFeed::Get_MapListUids_Receiver().MapList_IsInProgress) return;
     // trace('checking MapList_IsInProgress = false');
     if (CheckLimit::ShouldCheckForNewMaps(app)) {
         trace('ShouldCheckForNewMaps = true');
@@ -75,40 +56,27 @@ void CheckForNewMapsNow(CTrackMania@ app) {
     auto si = cast<CTrackManiaNetworkServerInfo>(app.Network.ServerInfo);
     if (si.ServerLogin.Length == 0) return;
 
-    trace('CheckForNewMapsNow: checking MapList_IsInProgress');
-    // auto pgsApi = app.Network.PlaygroundClientScriptAPI;
-    if (H_ReceiveMapUids.MapList_IsInProgress) return;
+    auto listUids = MLFeed::Get_MapListUids_Receiver();
+    if (listUids.MapList_IsInProgress) return;
 
-    trace('CheckForNewMapsNow: calling StartRequest');
-    CheckLimit::StartRequest(); // calls pgsApi.MapList_Request();
-    trace('CheckForNewMapsNow: called StartRequest');
-    // pgsApi 0x000001d9da725500
-    // accessing this at the wrong time can crash the game maybe?
-    trace('CheckForNewMapsNow: checking pgsApi.MapList_IsInProgress again');
-    if (!H_ReceiveMapUids.MapList_IsInProgress) {
+    CheckLimit::StartRequest();
+    if (!listUids.MapList_IsInProgress) {
         warn("MapList_IsInProgress did not immediately update");
     }
-    trace('CheckForNewMapsNow: waiting for MapList_IsInProgress to be false');
-    while (H_ReceiveMapUids.MapList_IsInProgress) {
+    while (listUids.MapList_IsInProgress) {
         yield();
     }
-    if (app.Network.PlaygroundClientScriptAPI is null) {
-        warn("CheckForNewMapsNow: pgsApi is null");
-        return;
+    auto @uids = listUids.MapList_MapUids;
+    auto @names = listUids.MapList_Names;
+    // trace('CheckForNewMapsNow: MapList_IsInProgress is false');
+    if (uids.Length != names.Length) {
+        warn("MapList_MapUids.Length != MapList_Names.Length: " + uids.Length + " != " + names.Length);
     }
-    trace('CheckForNewMapsNow: MapList_IsInProgress is false');
-    if (H_ReceiveMapUids.MapList_MapUids.Length != H_ReceiveMapUids.MapList_Names.Length) {
-        warn("MapList_MapUids.Length != MapList_Names.Length: " + H_ReceiveMapUids.MapList_MapUids.Length + " != " + H_ReceiveMapUids.MapList_Names.Length);
-    }
-    int nbMaps = Math::Min(int(H_ReceiveMapUids.MapList_MapUids.Length), H_ReceiveMapUids.MapList_Names.Length);
-    trace('CheckForNewMapsNow: nbMaps: ' + nbMaps);
+    int nbMaps = Math::Min(int(uids.Length), names.Length);
+    // trace('CheckForNewMapsNow: nbMaps: ' + nbMaps);
     for (int i = 0; i < nbMaps; i++) {
-        // auto uid = pgsApi.MapList_MapUids[i];
-        // auto name = pgsApi.MapList_Names[i];
-        // print("Map: " + uid + " - " + name);
-        trace('CheckForNewMapsNow: calling PreCacher::CheckAndCacheMapIfNew_Async');
-        PreCacher::CheckAndCacheMapIfNew_Async(H_ReceiveMapUids.MapList_MapUids[i], H_ReceiveMapUids.MapList_Names[i]);
-        // pgsApi.MapList_MapUids
+        // trace('CheckForNewMapsNow: calling PreCacher::CheckAndCacheMapIfNew_Async');
+        PreCacher::CheckAndCacheMapIfNew_Async(uids[i], names[i]);
     }
 }
 
@@ -117,20 +85,18 @@ namespace CheckLimit {
     uint64 lastMapsCheck = 0;
 
     void StartRequest() {
-        H_ReceiveMapUids.MapList_Request();
-        lastMapsCheck = Time::Now;
-        dev_print("MapList_Request() called at " + lastMapsCheck);
+        MLFeed::Get_MapListUids_Receiver().MapList_Request();
     }
 
     bool ShouldCheckForNewMaps(CTrackMania@ app) {
-        auto sinceLastCheck = Time::Now - lastMapsCheck;
+        auto sinceLastCheck = MLFeed::Get_MapListUids_Receiver().MsSinceLastReqStart;
         auto gt30sSinceLastCheck = sinceLastCheck > 30000;
-        auto gt4sSinceLastCheck = sinceLastCheck > 4000;
+        auto gt2sSinceLastCheck = sinceLastCheck > 2000;
         return gt30sSinceLastCheck // more than 30s since last check
             // faster refresh periods
-            || (gt4sSinceLastCheck && (
+            || (gt2sSinceLastCheck && (
                 // less than 20s remaining in the current map
-                IsModeTimeRemainingLt(app, 20000)
+                MLFeed::GetRaceData_V4().IsRemainingRulesTimeLessThan(20000)
                 // or sequence is podium, ui interaction
                 || UISeqOkayForMapsRefresh(app)
             ));

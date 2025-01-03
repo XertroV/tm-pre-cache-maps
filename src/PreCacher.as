@@ -4,8 +4,7 @@ namespace PreCacher {
 
     // this retrieves a map url from nadeo and precaches it. safe to call more than once with the same UID (does nothing 2nd+ time). Will yield.
     void CheckAndCacheMapIfNew_Async(const string &in uid, const string &in name = "<Unk Name>") {
-        auto uidLen = uid.Length;
-
+        // auto uidLen = uid.Length;
         if (seenThings.Exists(uid)) return;
         seenThings[uid] = true;
         trace("PreCacher: Caching map: " + uid + " - " + name);
