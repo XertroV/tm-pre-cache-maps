@@ -1,0 +1,21 @@
+<script><!--
+
+Void MLHookLog(Text msg) {
+    SendCustomEvent("MLHook_LogMe_TestGetMapUids", [msg]);
+}
+
+main() {
+    while (Playground.MapList_IsInProgress) {
+        yield;
+    }
+    Playground.MapList_Request();
+    while (Playground.MapList_IsInProgress) {
+        yield;
+    }
+    foreach (MapUid in Playground.MapList_MapUids) {
+        MLHookLog("MapUid: "^MapUid);
+    }
+    yield;
+}
+
+--></script>
