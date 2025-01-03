@@ -49,7 +49,7 @@ void MaybeCheckForNewMaps(CTrackMania@ app) {
     if (CheckLimit::ShouldCheckForNewMaps(app)) {
         trace('ShouldCheckForNewMaps = true');
         CheckForNewMapsNow(app);
-    } else if (lastUpdateNonce != listUids.UpdateCount & !listUids.MapList_IsInProgress) {
+    } else if (lastUpdateNonce != listUids.UpdateCount && !listUids.MapList_IsInProgress) {
         OnOutOfCycleUpdate();
     }
     lastUpdateNonce = listUids.UpdateCount;

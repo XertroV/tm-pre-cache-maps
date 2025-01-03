@@ -4,6 +4,9 @@ namespace PreCacher {
 
     // this retrieves a map url from nadeo and precaches it. safe to call more than once with the same UID (does nothing 2nd+ time). Will yield.
     void CheckAndCacheMapIfNew_Async(const string &in uid, const string &in name = "<Unk Name>") {
+#if DEPENDENCY_BETTERROOMMANAGER
+        BRM::PreCacheMapByUid_Async(uid, name);
+#else
         // auto uidLen = uid.Length;
         if (seenThings.Exists(uid)) return;
         seenThings[uid] = true;
@@ -14,6 +17,7 @@ namespace PreCacher {
         }
         trace("PreCacher: Caching map: " + uid + " - " + name + " @ " + url);
         PreCacher::PreCacheAsset(url);
+#endif
     }
 
     // use this to precache maps or other assets. safe to call more than once with the same URL (prints log 2nd+ time).
