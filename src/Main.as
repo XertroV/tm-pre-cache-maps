@@ -4,9 +4,6 @@ const string PluginIcon = Icons::Cogs;
 const string MenuTitle = MenuIconColor + PluginIcon + "\\$z " + PluginName;
 
 void Main() {
-#if DEV
-    InterceptProcs();
-#endif
     auto app = cast<CTrackMania>(GetApp());
     while (true) {
         RunWhileNotInServer(app);
@@ -114,52 +111,6 @@ namespace CheckLimit {
     }
 }
 
-
-
-
-
-
-
-
-
-// returns false if invalid time left
-bool IsModeTimeRemainingLt(CTrackMania@ app, int millis) {
-    auto timeLeft = GetModeTimeRemaining(app);
-    return timeLeft >= 0 && timeLeft < millis;
-}
-
-int GetModeTimeRemaining(CTrackMania@ app) {
-    auto gt = GetGameTime(app.Network.PlaygroundClientScriptAPI);
-    auto startEnd = GetRulesStartEndTime(cast<CSmArenaClient>(app.CurrentPlayground));
-    if (gt <= -1 || startEnd.x <= -1 || startEnd.y <= -1) return -1;
-    return startEnd.y - gt;
-}
-
-int GetServerTimeElapsed(CTrackMania@ app) {
-    auto gt = GetGameTime(app.Network.PlaygroundClientScriptAPI);
-    auto startEnd = GetRulesStartEndTime(cast<CSmArenaClient>(app.CurrentPlayground));
-    if (gt == -1 || startEnd.x == -1 || startEnd.y == -1) return -1;
-    return gt - startEnd.x;
-}
-
-int GetGameTime(CGamePlaygroundClientScriptAPI@ pgsApi = null) {
-    if (pgsApi is null) {
-        auto app = cast<CTrackMania>(GetApp());
-        if (app.Network.PlaygroundClientScriptAPI is null) return -1;
-        @pgsApi = app.Network.PlaygroundClientScriptAPI;
-    }
-    return pgsApi.GameTime;
-}
-
-int2 GetRulesStartEndTime(CSmArenaClient@ currPlayground = null) {
-    if (currPlayground is null) {
-        @currPlayground = cast<CSmArenaClient>(GetApp().CurrentPlayground);
-    }
-    try {
-        return int2(currPlayground.Arena.Rules.RulesStateStartTime, currPlayground.Arena.Rules.RulesStateEndTime);
-    } catch {}
-    return int2(-1, -1);
-}
 
 void dev_print(const string &in msg) {
 #if DEV

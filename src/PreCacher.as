@@ -7,12 +7,12 @@ namespace PreCacher {
         // auto uidLen = uid.Length;
         if (seenThings.Exists(uid)) return;
         seenThings[uid] = true;
-        trace("PreCacher: Caching map: " + uid + " - " + name);
         string url = Core::GetMapUrl(uid);
         if (url == "") {
             warn("PreCacher: Could not get map url for " + uid + " - " + name);
             return;
         }
+        trace("PreCacher: Caching map: " + uid + " - " + name + " @ " + url);
         PreCacher::PreCacheAsset(url);
     }
 
@@ -28,6 +28,7 @@ namespace PreCacher {
             return;
         }
         seenThings[url] = true;
+        trace("PreCacher::PreCacheAsset: Pre-caching: " + url);
         auto audio = cast<CTrackMania>(GetApp()).MenuManager.MenuCustom_CurrentManiaApp.Audio;
         auto sound = audio.CreateSound(url);
         // clean up the sound to avoid polluting the audio engine
