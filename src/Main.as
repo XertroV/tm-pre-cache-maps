@@ -40,13 +40,19 @@ void RunWhileInServer(CTrackMania@ app) {
     dev_print("RunWhileInServer exiting: ServerLogin: " + si.ServerLogin);
 }
 
+uint lastUpdateNonce = 0;
+
 void MaybeCheckForNewMaps(CTrackMania@ app) {
-    if (MLFeed::Get_MapListUids_Receiver().MapList_IsInProgress) return;
+    auto listUids = MLFeed::Get_MapListUids_Receiver();
+    if (listUids.MapList_IsInProgress) return;
     // trace('checking MapList_IsInProgress = false');
     if (CheckLimit::ShouldCheckForNewMaps(app)) {
         trace('ShouldCheckForNewMaps = true');
         CheckForNewMapsNow(app);
+    } else if (lastUpdateNonce != listUids.UpdateCount & !listUids.MapList_IsInProgress) {
+        OnOutOfCycleUpdate();
     }
+    lastUpdateNonce = listUids.UpdateCount;
 }
 
 void CheckForNewMapsNow(CTrackMania@ app) {
@@ -63,17 +69,37 @@ void CheckForNewMapsNow(CTrackMania@ app) {
     while (listUids.MapList_IsInProgress) {
         yield();
     }
+    PopulateUidsFromSource(listUids);
+}
+
+void OnOutOfCycleUpdate() {
+    PopulateUidsFromSource(MLFeed::Get_MapListUids_Receiver());
+}
+
+void PopulateUidsFromSource(MLFeed::MapListUids_Receiver@ listUids) {
     auto @uids = listUids.MapList_MapUids;
     auto @names = listUids.MapList_Names;
-    // trace('CheckForNewMapsNow: MapList_IsInProgress is false');
-    if (uids.Length != names.Length) {
-        warn("MapList_MapUids.Length != MapList_Names.Length: " + uids.Length + " != " + names.Length);
-    }
-    int nbMaps = Math::Min(int(uids.Length), names.Length);
+    int nbMaps = int(uids.Length);
     // trace('CheckForNewMapsNow: nbMaps: ' + nbMaps);
+    Meta::PluginCoroutine@[] coros;
     for (int i = 0; i < nbMaps; i++) {
-        // trace('CheckForNewMapsNow: calling PreCacher::CheckAndCacheMapIfNew_Async');
-        PreCacher::CheckAndCacheMapIfNew_Async(uids[i], names[i]);
+        // running them as coros ensures we copy all relevant data immediately.
+        coros.InsertLast(startnew(Run_CheckAndCacheMapIfNew_Coro, UidAndName(uids[i], names[i])));
+    }
+    await(coros);
+}
+
+void Run_CheckAndCacheMapIfNew_Coro(ref@ ref) {
+    auto @uidAndName = cast<UidAndName>(ref);
+    PreCacher::CheckAndCacheMapIfNew_Async(uidAndName.Uid, uidAndName.Name);
+}
+
+class UidAndName {
+    string Uid;
+    string Name;
+    UidAndName(const string &in uid, const string &in name) {
+        Uid = uid;
+        Name = name;
     }
 }
 
