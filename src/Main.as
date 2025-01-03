@@ -76,15 +76,23 @@ void OnOutOfCycleUpdate() {
     PopulateUidsFromSource(MLFeed::Get_MapListUids_Receiver());
 }
 
+const int MAX_MAPS_TO_CACHE = 3;
+
 void PopulateUidsFromSource(MLFeed::MapListUids_Receiver@ listUids) {
     auto @uids = listUids.MapList_MapUids;
     auto @names = listUids.MapList_Names;
     int nbMaps = int(uids.Length);
     // trace('CheckForNewMapsNow: nbMaps: ' + nbMaps);
     Meta::PluginCoroutine@[] coros;
-    for (int i = 0; i < nbMaps; i++) {
+
+    int startIx = uids.Find(MLFeed::GetRaceData_V4().Map) + 1;
+    int endIx = startIx + Math::Min(MAX_MAPS_TO_CACHE, nbMaps);
+    trace('PopulateUidsFromSource: startIx: ' + startIx + ' endIx: ' + endIx + ' nbMaps: ' + nbMaps + ', e-s=n? ' + (endIx - startIx) + '==' + Math::Min(nbMaps, MAX_MAPS_TO_CACHE));
+
+    for (int i = startIx; i < endIx; i++) {
         // running them as coros ensures we copy all relevant data immediately.
-        coros.InsertLast(startnew(Run_CheckAndCacheMapIfNew_Coro, UidAndName(uids[i], names[i])));
+        coros.InsertLast(startnew(Run_CheckAndCacheMapIfNew_Coro, UidAndName(uids[i % nbMaps], names[i % nbMaps])));
+        trace('PopulateUidsFromSource: ' + uids[i % nbMaps] + ' - ' + names[i % nbMaps]);
     }
     await(coros);
 }
