@@ -6,8 +6,7 @@ version  = "1.0.0"
 
 [script]
 #__DEFINES__
-# dependencies = ["MLFeedRaceData"]
-dependencies = ["MLHook", "MLFeedRaceData"]
+dependencies = ["MLFeedRaceData"]
 optional_dependencies = ["BetterRoomManager"]
 exports = ["PreCacher_Export.as"]
 module = "PreCacher"

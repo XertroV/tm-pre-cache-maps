@@ -50,7 +50,7 @@ void MaybeCheckForNewMaps(CTrackMania@ app) {
         trace('ShouldCheckForNewMaps = true');
         CheckForNewMapsNow(app);
     } else if (lastUpdateNonce != listUids.UpdateCount && !listUids.MapList_IsInProgress) {
-        OnOutOfCycleUpdate();
+        OnOutOfCycleUpdate(listUids);
     }
     lastUpdateNonce = listUids.UpdateCount;
 }
@@ -72,8 +72,8 @@ void CheckForNewMapsNow(CTrackMania@ app) {
     PopulateUidsFromSource(listUids);
 }
 
-void OnOutOfCycleUpdate() {
-    PopulateUidsFromSource(MLFeed::Get_MapListUids_Receiver());
+void OnOutOfCycleUpdate(MLFeed::MapListUids_Receiver@ listUids) {
+    PopulateUidsFromSource(listUids);
 }
 
 const int MAX_MAPS_TO_CACHE = 3;
@@ -117,6 +117,7 @@ namespace CheckLimit {
 
     void StartRequest() {
         MLFeed::Get_MapListUids_Receiver().MapList_Request();
+        lastMapsCheck = Time::Now;
     }
 
     bool ShouldCheckForNewMaps(CTrackMania@ app) {
